@@ -97,6 +97,7 @@ function bindStaticListeners() {
 
   // Close modal on overlay click
   document.getElementById('modalContainer').addEventListener('click', (e) => {
+    if (e.target.closest('.unlock-overlay')) return;
     if (e.target.id === 'modalContainer' || e.target.classList.contains('modal-overlay')) {
       closeModal();
     }

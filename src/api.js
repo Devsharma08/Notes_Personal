@@ -1,11 +1,11 @@
 import { encryptNote, decryptNote } from './crypto.js';
 
 const BASE_URL = '/api/notes';
-const APP_SECRET = import.meta.env.VITE_APP_SECRET_KEY;
+const APP_SECRET = import.meta.env.VITE_APP_SECRET_KEY || import.meta.env.VITE_APP_SECRET;
 
 function requireAppSecret() {
   if (!APP_SECRET) {
-    throw new Error('VITE_APP_SECRET_KEY is not configured for this deployment.');
+    throw new Error('VITE_APP_SECRET_KEY or VITE_APP_SECRET is not configured for this deployment.');
   }
 }
 

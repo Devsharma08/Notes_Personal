@@ -1,5 +1,5 @@
 import './styles.css';
-import { fetchNotes, createNote, updateNote, deleteNote } from './api.js';
+import { api } from './api.js';
 import { applyHighlights, formatDate, parseHighlights, NOTE_COLORS, debounce, genId } from './utils.js';
 
 // ===== State =====
@@ -11,11 +11,12 @@ let filterMode = 'all'; // 'all' | 'pinned'
 let editingNote = null;   // null = new note, note obj = editing
 let isModalOpen = false;
 let isLoading = true;
+let masterPassword = null;
 
 // ===== Bootstrap =====
 document.getElementById('app').innerHTML = buildAppHTML();
 bindStaticListeners();
-loadNotes();
+requestMasterPassword();
 
 // ===== HTML Templates =====
 function buildAppHTML() {
@@ -34,6 +35,7 @@ function buildAppHTML() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
           New Note
         </button>
+        <button class="btn btn-ghost" id="lockAppBtn" title="Lock notes">Lock</button>
       </div>
     </header>
 
@@ -67,6 +69,7 @@ function buildAppHTML() {
 function bindStaticListeners() {
   // New note
   document.getElementById('newNoteBtn').addEventListener('click', () => openModal(null));
+  document.getElementById('lockAppBtn').addEventListener('click', lockApp);
 
   // Search
   const searchInput = document.getElementById('searchInput');
@@ -103,13 +106,14 @@ function bindStaticListeners() {
 // ===== Data =====
 async function loadNotes() {
   try {
-    notes = await fetchNotes();
+    notes = await api.getNotes(masterPassword);
     applyFilter();
     renderNotes();
   } catch (err) {
-    showToast('Cannot connect to JSON server. Run `npm start`.', 'error');
+    showToast(err.message || 'Cannot load encrypted notes.', 'error');
     notes = [];
     renderNotes();
+    throw err;
   } finally {
     isLoading = false;
   }
@@ -286,7 +290,7 @@ function bindNoteCardListeners() {
       const note = notes.find(n => n.id === id);
       if (!note) return;
       try {
-        const updated = await updateNote(id, { ...note, pinned: !note.pinned });
+        const updated = await saveEncryptedNote({ ...note, pinned: !note.pinned });
         notes = notes.map(n => n.id === id ? updated : n);
         applyFilter();
         renderNotes();
@@ -314,7 +318,7 @@ function bindNoteCardListeners() {
       const id = btn.dataset.id;
       if (!confirm('Delete this note?')) return;
       try {
-        await deleteNote(id);
+        await api.deleteNote(id);
         notes = notes.filter(n => n.id !== id);
         applyFilter();
         renderNotes();
@@ -538,7 +542,7 @@ function bindModalListeners() {
     if (!editingNote) return;
     if (!confirm('Delete this note? This cannot be undone.')) return;
     try {
-      await deleteNote(editingNote.id);
+      await api.deleteNote(editingNote.id);
       notes = notes.filter(n => n.id !== editingNote.id);
       applyFilter();
       renderNotes();
@@ -579,11 +583,11 @@ function bindModalListeners() {
 
     try {
       if (editingNote) {
-        const updated = await updateNote(editingNote.id, { ...editingNote, ...payload });
+        const updated = await saveEncryptedNote({ ...editingNote, ...payload });
         notes = notes.map(n => n.id === editingNote.id ? updated : n);
         showToast('Note saved', 'success');
       } else {
-        const created = await createNote({ id: genId(), ...payload });
+        const created = await saveEncryptedNote({ id: genId(), ...payload });
         notes.unshift(created);
         showToast('Note created', 'success');
       }
@@ -621,6 +625,70 @@ function handleEscClose(e) {
     closeModal();
     document.removeEventListener('keydown', handleEscClose);
   }
+}
+
+function saveEncryptedNote(note) {
+  const now = new Date().toISOString();
+  const preparedNote = {
+    ...note,
+    createdAt: note.createdAt || now,
+    updatedAt: now,
+  };
+  return api.saveNote(preparedNote, masterPassword).then(() => preparedNote);
+}
+
+function requestMasterPassword() {
+  const container = document.getElementById('modalContainer');
+  container.innerHTML = `
+    <div class="modal-overlay unlock-overlay">
+      <div class="unlock-modal" role="dialog" aria-modal="true" aria-labelledby="unlockTitle">
+        <div class="unlock-icon">🔒</div>
+        <h1 class="unlock-title" id="unlockTitle">Unlock NoteFlow</h1>
+        <p class="unlock-description">Your notes are encrypted before they leave this device.</p>
+        <form id="unlockForm" class="unlock-form">
+          <label class="field-label" for="masterPassword">Master password</label>
+          <input class="field-input" id="masterPassword" type="password" autocomplete="current-password" required autofocus />
+          <div class="unlock-error" id="unlockError" role="alert"></div>
+          <button class="btn btn-primary unlock-submit" type="submit">Unlock notes</button>
+        </form>
+      </div>
+    </div>`;
+
+  document.getElementById('unlockForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const input = document.getElementById('masterPassword');
+    const submit = event.currentTarget.querySelector('button');
+    const error = document.getElementById('unlockError');
+    const password = input.value;
+    if (!password) return;
+
+    submit.disabled = true;
+    submit.textContent = 'Unlocking…';
+    error.textContent = '';
+    masterPassword = password;
+    isLoading = true;
+    renderNotes();
+
+    try {
+      await loadNotes();
+      container.innerHTML = '';
+    } catch (err) {
+      error.textContent = err.message || 'Unable to unlock notes.';
+      masterPassword = null;
+      submit.disabled = false;
+      submit.textContent = 'Unlock notes';
+      input.select();
+    }
+  });
+}
+
+function lockApp() {
+  masterPassword = null;
+  notes = [];
+  filteredNotes = [];
+  isLoading = true;
+  renderNotes();
+  requestMasterPassword();
 }
 
 // ===== Toast =====

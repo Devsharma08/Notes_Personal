@@ -392,6 +392,25 @@ input, textarea { font-family: inherit; }
   animation: fadeIn 0.15s ease;
 }
 
+.unlock-overlay { z-index: 300; }
+
+.unlock-modal {
+  width: min(420px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  box-shadow: var(--shadow-modal);
+  text-align: center;
+}
+
+.unlock-icon { font-size: 32px; margin-bottom: 12px; }
+.unlock-title { font-family: var(--font-serif); font-size: 26px; font-weight: 600; }
+.unlock-description { color: var(--text-secondary); margin: 6px 0 24px; }
+.unlock-form { text-align: left; }
+.unlock-submit { width: 100%; justify-content: center; margin-top: 16px; }
+.unlock-error { min-height: 20px; color: var(--danger); font-size: 12px; margin-top: 8px; }
+
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ===== Note Modal ===== */

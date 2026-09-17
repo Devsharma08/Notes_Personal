@@ -9,13 +9,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "npm run dev",
-    "test":"node src/crypto.test.js"
+    "test": "node src/crypto.test.js"
   },
   "dependencies": {
+    "@upstash/redis": "^1.38.4",
     "json-server": "^0.17.4"
   },
   "devDependencies": {
-    "vite": "^5.0.0",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "vite": "^5.0.0"
   }
 }

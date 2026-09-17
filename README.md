@@ -1,6 +1,6 @@
 # 📝 NoteFlow
 
-A local-first notes application with rich note-taking features: titles, descriptions, bullet pointers, text highlighting, pinning, colors, search, and grid/list views. The frontend is powered by [Vite](https://vite.dev) and uses [json-server](https://github.com/typicode/json-server) for local development.
+A local-first notes application with rich note-taking features: titles, descriptions, bullet pointers, text highlighting, pinning, colors, search, and grid/list views. Notes are encrypted in the browser with Web Crypto before they are sent to the Vercel/Upstash API.
 
 ---
 
@@ -14,7 +14,8 @@ A local-first notes application with rich note-taking features: titles, descript
 - **Search** — live full-text search across title, description, pointers, and highlights
 - **Grid / List view** — toggle between card grid and compact list layouts
 - **Live preview** — see highlights applied in real-time while editing
-- **Local JSON database** — notes are stored in `db.json` through json-server during local development
+- **Encrypted persistence** — notes are encrypted in the browser before reaching the API
+- **Local JSON database** — legacy json-server support remains available for local API development
 - **Encryption utilities** — AES-256-GCM encryption and PBKDF2 key derivation are provided in `src/crypto.js`
 - **Optional serverless API** — `api/notes.js` stores encrypted payloads in Upstash Redis for a Vercel deployment
 
@@ -55,14 +56,14 @@ You can replace the sample data with an empty database if preferred:
 pnpm start
 ```
 
-This starts two servers concurrently:
+`pnpm start` starts the Vite frontend and the legacy json-server concurrently. The encrypted API flow uses the Vercel function, so use `vercel dev` or deploy to Vercel for end-to-end encrypted persistence.
 
 | Server | URL | Purpose |
 |--------|-----|---------|
 | Vite dev server | http://localhost:3000 | Frontend (hot-reload) |
-| json-server | http://localhost:3001 | REST API / local database |
+| json-server | http://localhost:3001 | Legacy local REST API |
 
-Open **http://localhost:3000** in your browser.
+Open **http://localhost:3000** in your browser when the encrypted API is available at the same origin through Vercel.
 
 ---
 
@@ -72,7 +73,7 @@ Open **http://localhost:3000** in your browser.
 notes-app/
 ├── src/
 │   ├── main.js        # App logic, rendering, event handling
-│   ├── api.js         # Local notes API calls
+│   ├── api.js         # Encrypted notes API client
 │   ├── crypto.js      # AES-GCM encryption/decryption helpers
 │   ├── crypto.test.js # Encryption round-trip and password rejection test
 │   ├── utils.js       # Highlight engine, date formatting, helpers
@@ -89,20 +90,19 @@ notes-app/
 
 ---
 
-## Local API
+## Encrypted API
 
-The browser talks to `/api/notes`. During local development, Vite proxies these requests to json-server at `http://localhost:3001`.
+The browser talks to `/api/notes` and sends the `x-noteflow-secret` header when `VITE_APP_SECRET_KEY` is configured. Notes are encrypted with the master password before they are sent.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/notes` | Get all notes |
-| `POST` | `/api/notes` | Create a note |
-| `PUT` | `/api/notes/:id` | Update a note |
-| `DELETE` | `/api/notes/:id` | Delete a note |
+| `POST` | `/api/notes` | Create or replace an encrypted note via `{ "encryptedNote": payload }` |
+| `DELETE` | `/api/notes?id=:id` | Delete a note by ID |
 
 ## Optional Vercel API
 
-`api/notes.js` is a separate serverless handler for deployments that use [Vercel](https://vercel.com/) and [Upstash Redis](https://upstash.com/). It accepts encrypted note payloads and supports `GET`, `POST`, and `DELETE`; it does not replace the local json-server workflow automatically.
+`api/notes.js` is the serverless handler for deployments that use [Vercel](https://vercel.com/) and [Upstash Redis](https://upstash.com/). It accepts encrypted note payloads and supports `GET`, `POST`, and `DELETE`.
 
 The optional handler requires the `@upstash/redis` package and Upstash REST credentials in the deployment environment. Install the package before deploying this route:
 
@@ -117,7 +117,7 @@ Configure the Upstash integration variables required by `@upstash/redis`, plus:
 | `REDIS_STORAGE_KEY` | Optional Redis key; defaults to `encrypted_noteflow_db` |
 | `VITE_APP_SECRET_KEY` or `APP_SECRET_KEY` | Optional value checked against the `x-noteflow-secret` request header |
 
-The serverless handler expects `POST` requests with an `encryptedNote` containing `id` and `ciphertext`. The encryption helpers use AES-256-GCM with a PBKDF2-derived key, a random 16-byte salt, and a random 12-byte IV. The current frontend does not yet call this handler or encrypt notes automatically.
+The serverless handler expects `POST` requests with an `encryptedNote` containing `id` and `ciphertext`. The encryption helpers use AES-256-GCM with a PBKDF2-derived key, a random 16-byte salt, and a random 12-byte IV. The frontend prompts for the master password at unlock and keeps it only in memory.
 
 ---
 

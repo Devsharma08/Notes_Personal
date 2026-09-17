@@ -1,40 +1,72 @@
+import { encryptNote, decryptNote } from './crypto.js';
+
 const BASE_URL = '/api/notes';
+const APP_SECRET = import.meta.env.VITE_APP_SECRET_KEY;
 
-export async function fetchNotes() {
-  const res = await fetch(`${BASE_URL}?_sort=updatedAt&_order=desc`);
-  if (!res.ok) throw new Error('Failed to fetch notes');
-  return res.json();
+function requestHeaders(includeJson = false) {
+  return {
+    ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
+    ...(APP_SECRET ? { 'x-noteflow-secret': APP_SECRET } : {}),
+  };
 }
 
-export async function createNote(note) {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...note,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }),
-  });
-  if (!res.ok) throw new Error('Failed to create note');
-  return res.json();
+async function readError(response, fallback) {
+  const errorData = await response.json().catch(() => ({}));
+  return new Error(errorData.error || `${fallback}: ${response.status}`);
 }
 
-export async function updateNote(id, note) {
-  const res = await fetch(`${BASE_URL}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...note,
-      updatedAt: new Date().toISOString(),
-    }),
-  });
-  if (!res.ok) throw new Error('Failed to update note');
-  return res.json();
-}
+export const api = {
+  async getNotes(masterPassword) {
+    const response = await fetch(BASE_URL, {
+      method: 'GET',
+      headers: requestHeaders(),
+    });
 
-export async function deleteNote(id) {
-  const res = await fetch(`${BASE_URL}/${id}`, { method: 'DELETE' });
-  if (!res.ok) throw new Error('Failed to delete note');
-  return true;
-}
+    if (!response.ok) throw await readError(response, 'Failed to fetch notes');
+
+    const encryptedList = await response.json();
+    if (!Array.isArray(encryptedList)) {
+      throw new Error('The notes API returned an invalid payload. Start the encrypted API server.');
+    }
+
+    const decryptedNotes = await Promise.all(
+      encryptedList.map(async (item) => {
+        try {
+          return await decryptNote(item, masterPassword);
+        } catch (error) {
+          console.error(`Failed to decrypt note ID ${item.id}:`, error);
+          return null;
+        }
+      })
+    );
+
+    const validNotes = decryptedNotes.filter((note) => note !== null);
+    if (encryptedList.length > 0 && validNotes.length === 0) {
+      throw new Error('Unable to unlock notes. Check the master password.');
+    }
+
+    return validNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  },
+
+  async saveNote(noteData, masterPassword) {
+    const encryptedNote = await encryptNote(noteData, masterPassword);
+    const response = await fetch(BASE_URL, {
+      method: 'POST',
+      headers: requestHeaders(true),
+      body: JSON.stringify({ encryptedNote }),
+    });
+
+    if (!response.ok) throw await readError(response, 'Failed to save note');
+    return response.json();
+  },
+
+  async deleteNote(id) {
+    const response = await fetch(`${BASE_URL}?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: requestHeaders(),
+    });
+
+    if (!response.ok) throw await readError(response, 'Failed to delete note');
+    return response.json();
+  },
+};

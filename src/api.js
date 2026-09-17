@@ -3,6 +3,12 @@ import { encryptNote, decryptNote } from './crypto.js';
 const BASE_URL = '/api/notes';
 const APP_SECRET = import.meta.env.VITE_APP_SECRET_KEY;
 
+function requireAppSecret() {
+  if (!APP_SECRET) {
+    throw new Error('VITE_APP_SECRET_KEY is not configured for this deployment.');
+  }
+}
+
 function requestHeaders(includeJson = false) {
   return {
     ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
@@ -17,6 +23,7 @@ async function readError(response, fallback) {
 
 export const api = {
   async getNotes(masterPassword) {
+    requireAppSecret();
     const response = await fetch(BASE_URL, {
       method: 'GET',
       headers: requestHeaders(),
@@ -41,14 +48,15 @@ export const api = {
     );
 
     const validNotes = decryptedNotes.filter((note) => note !== null);
-    if (encryptedList.length > 0 && validNotes.length === 0) {
-      throw new Error('Unable to unlock notes. Check the master password.');
+    if (validNotes.length !== encryptedList.length) {
+      throw new Error(`Unable to unlock ${encryptedList.length} note${encryptedList.length === 1 ? '' : 's'}. Check the master password.`);
     }
 
     return validNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   },
 
   async saveNote(noteData, masterPassword) {
+    requireAppSecret();
     const encryptedNote = await encryptNote(noteData, masterPassword);
     const response = await fetch(BASE_URL, {
       method: 'POST',
@@ -61,6 +69,7 @@ export const api = {
   },
 
   async deleteNote(id) {
+    requireAppSecret();
     const response = await fetch(`${BASE_URL}?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
       headers: requestHeaders(),

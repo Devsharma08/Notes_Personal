@@ -50,6 +50,10 @@ You can replace the sample data with an empty database if preferred:
 {"notes": []}
 ```
 
+### Configure the API secret
+
+Set the same private value for `VITE_APP_SECRET_KEY` in the frontend build environment and `APP_SECRET_KEY` (or `VITE_APP_SECRET_KEY`) in the Vercel function environment. The browser sends this value as `x-noteflow-secret`; the API rejects requests when it is missing or does not match. Never commit `.env.local` or the secret itself.
+
 ### Run
 
 ```bash

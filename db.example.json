@@ -1,0 +1,52 @@
+{
+  "notes": [
+    {
+      "id": "example-1",
+      "title": "Welcome to NoteFlow",
+      "description": "Your personal note-taking space with rich features. Create notes with titles, descriptions, bullet pointers, and highlighted keywords.",
+      "pointers": [
+        "Create notes with titles and descriptions",
+        "Add bullet-point pointers for structured info",
+        "Highlight important words in yellow",
+        "Pin notes to keep them at the top",
+        "Color-code notes with 8 pastel themes"
+      ],
+      "highlights": ["NoteFlow", "bullet-point", "highlighted"],
+      "color": "#ffffff",
+      "pinned": true,
+      "createdAt": "2026-09-17T08:00:00.000Z",
+      "updatedAt": "2026-09-17T08:00:00.000Z"
+    },
+    {
+      "id": "example-2",
+      "title": "Project Ideas",
+      "description": "Brainstorming for upcoming projects and features to explore.",
+      "pointers": [
+        "Build a mobile app version",
+        "Add dark mode support",
+        "Integrate with a calendar tool",
+        "Export notes to PDF"
+      ],
+      "highlights": ["mobile app", "dark mode"],
+      "color": "#fef9c3",
+      "pinned": false,
+      "createdAt": "2026-09-16T10:30:00.000Z",
+      "updatedAt": "2026-09-16T14:00:00.000Z"
+    },
+    {
+      "id": "example-3",
+      "title": "Reading List",
+      "description": "Books and articles I want to get through this quarter.",
+      "pointers": [
+        "The Pragmatic Programmer – Andrew Hunt",
+        "Designing Data-Intensive Applications – Martin Kleppmann",
+        "A Philosophy of Software Design – John Ousterhout"
+      ],
+      "highlights": ["Pragmatic Programmer", "Designing Data"],
+      "color": "#dcfce7",
+      "pinned": false,
+      "createdAt": "2026-09-15T09:00:00.000Z",
+      "updatedAt": "2026-09-15T09:00:00.000Z"
+    }
+  ]
+}

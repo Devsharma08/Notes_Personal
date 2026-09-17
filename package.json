@@ -1,0 +1,21 @@
+{
+  "name": "notes-app",
+  "version": "1.0.0",
+  "description": "A notes application with JSON server backend",
+  "type": "module",
+  "scripts": {
+    "server": "json-server --watch db.json --port 3001",
+    "dev": "concurrently \"npm run server\" \"npx vite --port 3000\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "npm run dev",
+    "test":"node src/crypto.test.js"
+  },
+  "dependencies": {
+    "json-server": "^0.17.4"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "concurrently": "^8.2.2"
+  }
+}
